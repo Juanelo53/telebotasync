@@ -30,11 +30,11 @@ use TeleBot\Helpers;
 //  COMANDOS
 // ══════════════════════════════════════════════════════════════
 
-$bot->command('/start', function (Ctx $ctx) {
+$bot->command('start', function (Ctx $ctx) {
     $name = Helpers::escape($ctx->firstName());
 
     $ctx->reply(
-        "Hola puta <b>{$name}</b>! Soy un bot asincrono.\n\n" .
+        "Hola <b>{$name}</b>! Soy un bot asincrono.\n\n" .
         "Comandos:\n" .
         "/start - Este mensaje\n" .
         "/ping - Test rapido\n" .
@@ -49,18 +49,18 @@ $bot->command('/start', function (Ctx $ctx) {
     );
 });
 
-$bot->command('/ping', function (Ctx $ctx) {
+$bot->command('ping', function (Ctx $ctx) {
     $ctx->reply('Pong!');
 });
 
-$bot->command('/async', function (Ctx $ctx) {
+$bot->command('async', function (Ctx $ctx) {
     $ctx->asyncWithTyping(function (Ctx $ctx) {
         sleep(10);
         $ctx->reply("Tarea completada despues de 10 segundos!");
     }, "Procesando... esto tardara unos segundos");
 });
 
-$bot->command('/imagen', function (Ctx $ctx) {
+$bot->command('imagen', function (Ctx $ctx) {
     $prompt = $ctx->args();
     if (empty($prompt)) {
         $ctx->reply("Uso: /imagen <descripcion de la imagen>");
@@ -75,7 +75,7 @@ $bot->command('/imagen', function (Ctx $ctx) {
     }, "Generando imagen: <i>{$safe}</i>...");
 });
 
-$bot->command('/estado', function (Ctx $ctx) {
+$bot->command('estado', function (Ctx $ctx) {
     $tasks = $ctx->api->call('getWebhookInfo');
     $pending = $tasks['result']['pending_update_count'] ?? 0;
     $ctx->reply("Updates pendientes: <b>{$pending}</b>");
