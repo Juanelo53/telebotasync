@@ -1,0 +1,6 @@
+config.php
+logs/*.log
+storage/tasks/*.json
+*.swp
+*.swo
+.DS_Store
