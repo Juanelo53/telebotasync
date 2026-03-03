@@ -34,7 +34,7 @@ $bot->command('/start', function (Ctx $ctx) {
     $name = Helpers::escape($ctx->firstName());
 
     $ctx->reply(
-        "Hola <b>{$name}</b>! Soy un bot asincrono.\n\n" .
+        "Hola puta <b>{$name}</b>! Soy un bot asincrono.\n\n" .
         "Comandos:\n" .
         "/start - Este mensaje\n" .
         "/ping - Test rapido\n" .
