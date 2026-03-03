@@ -5,19 +5,13 @@
  *
  * Cuando haces push a GitHub, este script recibe la notificación
  * y ejecuta git pull para actualizar el servidor automáticamente.
- *
- * Configurar en GitHub:
- *   Settings > Webhooks > Add webhook
- *   URL: https://juaneloserver.com/telebot/deploy.php
- *   Content type: application/json
- *   Secret: (el mismo que DEPLOY_SECRET abajo)
- *   Events: Just the push event
  */
 
 define('DEPLOY_SECRET', '37a8a27fc2416ed07dfc62ffd6f6c1da3ef8eb4d');
 define('REPO_DIR', __DIR__);
 define('LOG_FILE', __DIR__ . '/logs/deploy.log');
 define('BRANCH', 'main');
+define('SSH_KEY', '/home/juanelo/.ssh/telebot_deploy');
 
 $signature = $_SERVER['HTTP_X_HUB_SIGNATURE_256'] ?? '';
 $payload = file_get_contents('php://input');
@@ -37,7 +31,8 @@ $data = json_decode($payload, true);
 $ref = $data['ref'] ?? '';
 
 if ($ref !== 'refs/heads/' . BRANCH) {
-    echo json_encode(['ok' => true, 'msg' => 'Not target branch, skipping']);
+    http_response_code(200);
+    echo json_encode(['ok' => true, 'msg' => 'Not target branch']);
     exit;
 }
 
@@ -46,34 +41,55 @@ $commits = count($data['commits'] ?? []);
 
 deployLog("Deploy triggered by {$pusher} ({$commits} commits)");
 
-$output = [];
-$exitCode = 0;
+$sshCmd = 'ssh -i ' . SSH_KEY . ' -o StrictHostKeyChecking=no';
+$cmd = sprintf(
+    'cd %s && GIT_SSH_COMMAND=%s git fetch origin %s 2>&1 && git reset --hard origin/%s 2>&1',
+    escapeshellarg(REPO_DIR),
+    escapeshellarg($sshCmd),
+    BRANCH,
+    BRANCH
+);
 
-$sshCmd = 'ssh -i /home/juanelo/.ssh/telebot_deploy -o StrictHostKeyChecking=no';
-$env = "GIT_SSH_COMMAND=" . escapeshellarg($sshCmd);
+$result = runCommand($cmd);
+deployLog("Exit: {$result['code']} | {$result['output']}");
 
-$commands = [
-    "cd " . escapeshellarg(REPO_DIR),
-    "{$env} git fetch origin " . BRANCH,
-    "git reset --hard origin/" . BRANCH,
-];
-
-$cmd = implode(' && ', $commands) . ' 2>&1';
-exec($cmd, $output, $exitCode);
-
-$result = implode("\n", $output);
-deployLog("Exit code: {$exitCode}\n{$result}");
-
-// Asegurar ownership correcto después del pull (cPanel)
-exec('chown -R juanelo:juanelo ' . escapeshellarg(REPO_DIR) . ' 2>&1');
+if ($result['code'] === 0) {
+    deployLog("Deploy OK");
+} else {
+    deployLog("Deploy FAILED");
+}
 
 http_response_code(200);
 echo json_encode([
-    'ok' => $exitCode === 0,
-    'exit_code' => $exitCode,
-    'output' => $result,
-    'branch' => BRANCH,
+    'ok' => $result['code'] === 0,
+    'exit_code' => $result['code'],
+    'output' => $result['output'],
 ]);
+
+function runCommand(string $cmd): array
+{
+    $descriptors = [
+        0 => ['pipe', 'r'],
+        1 => ['pipe', 'w'],
+        2 => ['pipe', 'w'],
+    ];
+
+    $process = proc_open($cmd, $descriptors, $pipes);
+    if (!is_resource($process)) {
+        return ['code' => -1, 'output' => 'proc_open failed'];
+    }
+
+    fclose($pipes[0]);
+    $stdout = stream_get_contents($pipes[1]);
+    $stderr = stream_get_contents($pipes[2]);
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+
+    $code = proc_close($process);
+    $output = trim($stdout . "\n" . $stderr);
+
+    return ['code' => $code, 'output' => $output];
+}
 
 function deployLog(string $msg): void
 {
