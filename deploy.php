@@ -49,7 +49,7 @@ deployLog("Deploy triggered by {$pusher} ({$commits} commits)");
 $output = [];
 $exitCode = 0;
 
-$sshCmd = 'ssh -i /root/.ssh/telebot_deploy -o StrictHostKeyChecking=no';
+$sshCmd = 'ssh -i /home/juanelo/.ssh/telebot_deploy -o StrictHostKeyChecking=no';
 $env = "GIT_SSH_COMMAND=" . escapeshellarg($sshCmd);
 
 $commands = [
